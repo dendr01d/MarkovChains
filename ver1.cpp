@@ -6,55 +6,52 @@
 #include <iomanip>
 #include <sstream>
 
-using namespace std;
+#include "edge.h"
 
-struct edge {
-    edge(string str) : name(str), weight(1) {};
-    string name;
-    int weight;
-};
+using namespace std;
 
 class Node {
 private:
-    string name;
+    token name;
     vector<edge> edges;
     int totalWeight;
     
 public:
-    Node(string in1, string in2) : name(in1), totalWeight(0) {
+    Node(token in1, token in2) : name(in1), totalWeight(0) {
         addEdge(in2);
     }
     
-    string getName() { return name; }
+    token getName() { return name; }
     
-    void addEdge(string str) {
+    void addEdge(token word) {
         ++totalWeight; //happens no matter what
         for (edge &e : edges) { //add weight to edge if it exists
-            if (e.name == str) {
+            if (e.ID == word) {
                 e.weight += 1;
                 return;
             }
         }
         //otherwise make a new one
-        edges.push_back(edge(str));
+        edges.push_back(edge(word));
     }
     
-    string getEdge(int num) {
-        num %= totalWeight;
+    token getEdge(int rnum) {
+        rnum %= totalWeight;
         for (edge e : edges) {
-            num -= e.weight;
-            if (num < 0) {
-                return e.name;
+            rnum -= e.weight;
+            if (rnum < 0) {
+                return e.ID;
             }
         }
         //shouldn't happen but
-        return "Error";
+        cout << "getEdge Error!\n";
+        return 0;
     }
     
-    void print() {
-        cout << setw(8) << name << ' ' << setw(2) << totalWeight << " : ";
+    void print(vector<string> &dictionary) {
+        cout << setw(8) << dictionary[name] << ' ' << setw(2) << totalWeight << " : ";
         for (edge e : edges) {
-            cout << setw(8) << e.name << ' ' << setw(2) << e.weight << ' ';
+            cout << setw(8) << dictionary[e.ID] << ' ' << setw(2) << e.weight << ' ';
         }
     }
     
@@ -64,7 +61,7 @@ bool compareNodes(Node a, Node b) {
     return (a.getName() < b.getName());
 }
 
-void readIn(vector<Node> &nodes, string word1, string word2) {
+void readIn(vector<Node> &nodes, token word1, token word2) {
     for (auto i = nodes.begin(); i != nodes.end(); ++i) {
         if (i->getName() == word1) {
             i->addEdge(word2);
@@ -74,15 +71,17 @@ void readIn(vector<Node> &nodes, string word1, string word2) {
     nodes.push_back(Node(word1, word2));
 }
 
-string find(vector<Node> &nodes, string word, int r) {
+token find(vector<Node> &nodes, token word, int r) {
     for (Node n : nodes) {
         if (n.getName() == word) {
             return (n.getEdge(r));
         }
     }
-    return "Error!";
+    cout << "find Error!/n";
+    return 0;
 }
 
+/*
 bool charMatch(char ch, string str) {
     for (char c : str) {
         if (ch == c) {
@@ -91,45 +90,96 @@ bool charMatch(char ch, string str) {
     }
     return false;
 }
+*/
+
+static h_findInDict(vector<string> &dictionary, string target, int lb, int rb) {
+    int look = lb + (rb - lb) / 2;
+    if (dictionary[look] == target) {
+        return look;
+    } else if (target < dictionary[look]) {
+        return h_findInDict(dictionary, target, lb, look);
+    } else {
+        return h_findInDict(dictionary, target, look, rb);
+    }
+}
+
+token findInDict(vector<string> &dictionary, string target) {
+    return lower_bound(dictionary.begin(), dictionary.end(), target) - dictionary.begin();
+}
 
 int main () {
     srand(0);
     
-    vector<Node> nodes;
-    
-    string input;
-    string prevword, word;
+    vector<string> text;
+    text.push_back("#BREAK");
+    string input, word;
     
     while (getline(cin, input)) {
         stringstream ss(input);
-        prevword = "#BREAK";
         while (ss >> word) {
-            readIn(nodes, prevword, word);
-            prevword = word;
+            //when I worry about cleaning input it'll happen here
+            text.push_back(word);
+            //also when I want to start inserting #BREAKS after sentence-ending punctuation
         }
-        if (prevword != "#BREAK") {
-            readIn(nodes, prevword, "#BREAK");
+        if (text.back() != "#BREAK") {
+            text.push_back("#BREAK"); //for now we'll just break the text after line breaks
         }
     }
+    
+    for (string str : text) {
+        cout << str << ' ';
+        if (str == "#BREAK") {
+            cout << endl;
+        }
+    }
+    
+    vector<string> dictionary(text);
+    sort(dictionary.begin(), dictionary.end()); 
+    
+    //UGLY UGLY UGLY find a better way to do this
+    dictionary.resize(unique(dictionary.begin(), dictionary.end()) - dictionary.begin());
+    
+    //consider this immutable now
+    //tokens will refer to indices within this dictionary
+    //should save space on string-storage but'll add quite a bit of processing time
+    
+    for (string str : dictionary) {
+        cout << str << ' ';
+    }
+    cout << endl;
+    
+    
+    vector<Node> nodes;
+    token ta = findInDict(dictionary, text[0]);
+    token tb;
+    
+    for (unsigned i = 1; i < text.size(); ++i) {
+        tb = findInDict(dictionary, text[i]);
+        readIn(nodes, ta, tb);
+        
+        ta = tb;
+    }
+    
     
     cout << "[[Read Complete]]\n";
     sort(nodes.begin(), nodes.end(), compareNodes);
     for (Node n : nodes) {
-        n.print();
+        n.print(dictionary);
         cout << '\n';
     }
     
-    //repurposing prevword and word here
+    //reusing ta and tb here
     
     for (int i = 0; i < 10; ++i) {
         
-        prevword = "#BREAK";
-        word = find(nodes, prevword, rand());
+        ta = findInDict(dictionary, "#BREAK"); //and this is why special tokens will be helpful
+        //I could have just said "oh well the token for break is -1" and used that
+        tb = find(nodes, ta, rand());
         
-        while (word != "#BREAK") {
-            cout << word << ' ';
-            prevword = word;
-            word = find(nodes, prevword, rand());
+        while (dictionary[tb] != "#BREAK") {
+            cout << dictionary[tb] << ' ';
+            ta = tb;
+            tb = find(nodes, ta, rand());
         }
         cout << '\n';
     }
