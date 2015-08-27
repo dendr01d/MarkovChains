@@ -1,10 +1,12 @@
 TO DO:
--separate everything into nice classes
-    edges, nodes, graphs, dictionaries?...
+-consider benefits of making dictionary its own class
 -create an explicit file I/O
 -add commandline arguments?
 -create a file-writing system to save processed graphs
 -phase out "#BREAK"s in lieu of tokens with special IDs
+    will probably have to rewrite how edges work for this
 -come up with a way of dealing with nesting punctuation
 -figure out if there's a better way to store text than the token/dictionary system
 -modify nodes such that their names can be comprised of sequences of strings
+    maybe use concatenated strings for this? Might be easier logisticall ww passing things around
+-implement a proper debug mode
